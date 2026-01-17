@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Admin - Asistencias Consolidadas</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { font-family: Arial; background: #1a1a1a; color: white; margin:0; padding:0; }
+        .admin-container { padding: 20px; color: white; display:none; }
+        .tabla-scroll {
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-top: 20px;
+        }
+        table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.05); }
+        thead th {
+            position: sticky; top: 0;
+            background: #1a1a1a;
+            z-index: 10;
+            padding: 15px;
+        }
+        th, td {
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 12px;
+            text-align: center;
+            vertical-align: top;
+        }
+        .seccion-celda { text-align: left; font-size: 0.9em; }
+        .info-item { margin-bottom: 8px; }
+        .img-admin {
+            width: 80px; height: 60px;
+            object-fit: cover;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 2px;
+            transition: 0.3s;
+        }
+        .img-admin:hover { transform: scale(4); z-index: 100; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8em; }
+        .temprano { background: #00ff88; color: #1a1a1a; }
+        .tardanza { background: #d12323; color: white; }
+        .finalizado { background: #00d2ff; color: #1a1a1a; }
+        .tag-alerta { display: block; margin-top: 5px; padding: 5px; border-radius: 4px; font-weight: bold; font-size: 0.85em; }
+        .tag-falta { background: rgba(255,77,77,0.2); color: #ff4d4d; }
+        .tag-nuevo { background: rgba(52,152,219,0.2); color: #3498db; }
+        .horas-txt { color: #00ff88; font-weight: bold; font-size: 1.1em; }
+
+        /* LOGIN */
+        #login-box { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; }
+        #login-box input { padding:10px; margin-bottom:10px; width:215px; border-radius:5px; border:none; }
+        #login-box button { padding:10px 80px; border:none; border-radius:5px; background:#007bff; color:white; cursor:pointer; }
+        #login-box button:hover { background:#0056b3; }
+        #error-msg { color:red; margin-bottom:10px; }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-box">
+    <h2>INICIAR SESION</h2>
+    <div id="error-msg"></div>
+    <input type="text" id="usuario" placeholder="Usuario">
+    <input type="password" id="password" placeholder="Contraseña">
+    <button onclick="loginAdmin()">Ingresar</button>
+</div>
+
+<!-- PANEL ADMIN -->
+<div class="admin-container">
+    <button id="btn-logout" onclick="logoutAdmin()">Cerrar Sesión</button>
+
+
+    <h1>PANEL ADMINISTRATIVO</h1>
+
+    <div class="filtro-oc">
+        <input type="text" id="buscarOC" placeholder="Buscar por OC">
+        <button class="btn-oc" onclick="filtrarPorOC()">🔍</button>
+        <button class="btn-excel" onclick="descargarExcel()">📥 Excel</button>
+    </div>
+
+    <div class="tabla-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Jefe de Grupo</th>
+                    <th>Servicio / OC</th>
+                    <th>Sección de Entrada</th>
+                    <th>Sección de Salida</th>
+                    <th>Resumen</th>
+                    <th>Observacion General</th>
+                </tr>
+            </thead>
+            <tbody id="lista-asistencias"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let datosGlobales = [];
+
+// 🔐 LOGIN
+async function loginAdmin() {
+    const usuario = document.getElementById('usuario').value;
+    const password = document.getElementById('password').value;
+    const errorMsg = document.getElementById('error-msg');
+    errorMsg.textContent = '';
+
+    if (!usuario || !password) {
+        errorMsg.textContent = 'Ingrese usuario y contraseña';
+        return;
+    }
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuario, password })
+        });
+
+        const data = await response.json();
+
+        if (response.status === 200 && data.status === 'ok') {
+            sessionStorage.setItem('adminLoggedIn', 'true');
+            mostrarPanel();
+        } else {
+            errorMsg.textContent = 'Usuario o contraseña incorrectos';
+        }
+    } catch (err) {
+        errorMsg.textContent = 'Error al conectarse al servidor';
+        console.error(err);
+    }
+}
+
+// Mostrar panel y ocultar login
+function mostrarPanel() {
+    document.getElementById('login-box').style.display = 'none';
+    document.querySelector('.admin-container').style.display = 'block';
+    cargarReportes();
+}
+
+// Logout
+function logoutAdmin() {
+    sessionStorage.removeItem('adminLoggedIn');
+    window.location.reload();
+}
+
+// Cargar reportes
+async function cargarReportes() {
+    const response = await fetch('http://127.0.0.1:5000/admin/get_all');
+    const datos = await response.json();
+
+    datosGlobales = datos; 
+    renderTabla(datos);
+}
+
+// Guardar observación
+async function guardarObservacion(id) {
+    const textarea = document.getElementById(`obs-${id}`);
+    const observacion = textarea.value;
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/admin/guardar_observacion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_asistencia: id, observacion_admin: observacion })
+        });
+
+        const result = await response.json();
+        if(result.status === 'ok'){
+            alert('Observación guardada correctamente');
+        } else {
+            alert('Error: ' + result.message || 'No se pudo guardar');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error al guardar la observación');
+    }
+}
+
+// Renderizar tabla
+function renderTabla(datos) {
+    const tabla = document.getElementById('lista-asistencias');
+    tabla.innerHTML = "";
+
+    datos.forEach(asist => {
+
+        const nombresEntrada = asist.entrada.integrantes.length
+            ? asist.entrada.integrantes.map(p => `• ${p.nombre}`).join('<br>')
+            : '<i>Sin integrantes</i>';
+
+        let alertaHtml = '';
+        if (asist.salida.alerta) {
+            asist.salida.alerta.split(' | ').forEach(p => {
+                const esFalta = p.toLowerCase().includes('falta');
+                alertaHtml += `<span class="tag-alerta ${esFalta ? 'tag-falta' : 'tag-nuevo'}">${p}</span>`;
+            });
+        }
+
+        const horas = parseFloat(asist.horas_totales) || 0;
+        const h = Math.floor(horas);
+        const m = Math.round((horas - h) * 60);
+
+        const extras = parseFloat(asist.horas_extras) || 0;
+        const eh = Math.floor(extras);
+        const em = Math.round((extras - eh) * 60);
+
+        tabla.innerHTML += `
+        <tr>
+            <td><b>${asist.fecha}</b></td>
+            <td>${asist.nombre_jefe}</td>
+
+            <td class="seccion-celda">
+                <div class="info-item"><b>OC:</b> ${asist.servicio.oc || '-'}</div>
+                <div class="info-item"><b>Cliente:</b> ${asist.servicio.cliente || '-'}</div>
+                <div class="info-item"><b>Servicio:</b><br>${asist.servicio.descripcion || '-'}</div>
+            </td>
+
+            <td class="seccion-celda">
+                <div class="info-item"><b>Hora:</b> ${asist.entrada.hora}</div>
+                <div class="info-item">
+                    <b>Estado:</b>
+                    <span class="badge ${asist.entrada.estado.toLowerCase()}">${asist.entrada.estado}</span>
+                </div>
+                <div class="info-item">
+                    <b>Ubicación:</b>
+                    <a href="https://www.google.com/maps?q=${asist.entrada.ubicacion.lat},${asist.entrada.ubicacion.lon}"
+                       target="_blank"
+                       style="color:#00ff88; text-decoration:none; font-weight:bold;">
+                       📍Ver mapa
+                    </a>
+                </div>
+                <div class="info-item">
+                    <b>Fotos:</b><br>
+                    <img src="${asist.entrada.fotos[0]}" class="img-admin">
+                    <img src="${asist.entrada.fotos[1]}" class="img-admin">
+                </div>
+                <div class="info-item"><b>Integrantes:</b><br>${nombresEntrada}</div>
+            </td>
+
+            <td class="seccion-celda">
+                ${asist.salida.hora ? `
+                    <div class="info-item"><b>Hora:</b> ${asist.salida.hora}</div>
+                    <div class="info-item"><b>Estado:</b> <span class="badge finalizado">FINALIZADO</span></div>
+                    <div class="info-item">
+                        <b>Fotos:</b><br>
+                        <img src="${asist.salida.fotos[0]}" class="img-admin">
+                        <img src="${asist.salida.fotos[1]}" class="img-admin">
+                    </div>
+                    ${alertaHtml}
+                ` : '<i>Pendiente de salida</i>'}
+            </td>
+
+            <td>
+                <div class="horas-txt">${h} h ${m} min</div>
+                <small>Jornada Total</small>
+                ${extras > 0 ? `
+                    <div style="margin-top:6px; color:#ffd166; font-weight:bold;">
+                        + ${eh} h ${em} min extras
+                    </div>` : ''
+                }
+            </td>
+
+            <td class="seccion-celda">
+                <textarea id="obs-${asist.id_asistencia}" rows="3" style="width:95%;">${asist.observacion_admin || ''}</textarea>
+                <br>
+                <button onclick="guardarObservacion(${asist.id_asistencia})">Guardar</button>
+            </td>
+        </tr>
+        `;
+    });
+}
+
+// Filtrar por OC
+function filtrarPorOC() {
+    const oc = document.getElementById('buscarOC').value.trim().toLowerCase();
+    if (!oc) { renderTabla(datosGlobales); return; }
+    const filtrados = datosGlobales.filter(a => a.servicio.oc && a.servicio.oc.toLowerCase().includes(oc));
+    renderTabla(filtrados);
+}
+
+// Descargar Excel
+function descargarExcel() {
+    const oc = document.getElementById('buscarOC').value.trim();
+    if (!oc) { alert('Ingrese una OC para descargar'); return; }
+    window.open(`http://127.0.0.1:5000/admin/export_excel?oc=${encodeURIComponent(oc)}`, '_blank');
+}
+
+// Verificar sesión al cargar página
+window.onload = function() {
+    if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+        mostrarPanel();
+    } else {
+        document.getElementById('login-box').style.display = 'flex';
+        document.querySelector('.admin-container').style.display = 'none';
+    }
+}
+</script>
+
+</body>
+</html>
