@@ -7,6 +7,7 @@ import cloudinary.api
 import mysql.connector
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from flask import send_from_directory
 from datetime import datetime
 
 app = Flask(__name__)
@@ -493,6 +494,14 @@ def login_admin():
         return jsonify({"status": "ok"}), 200
     else:
         return jsonify({"status": "error"}), 401
+
+@app.route('/')
+def home():
+    return send_from_directory('.', 'index.html')
+
+@app.route('/admin')
+def admin():
+    return send_from_directory('.', 'admin.html')
 
 
 
