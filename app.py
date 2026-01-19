@@ -74,7 +74,8 @@ def login():
             return jsonify({"status": "success", "id_usuario": usuario[0], "nombre": usuario[1]}), 200
         return jsonify({"status": "error", "message": "Credenciales incorrectas"}), 401
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("ERROR LOGIN: ", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # 📝 REGISTRO GRUPAL
 @app.route('/registrar_grupal', methods=['POST'])
