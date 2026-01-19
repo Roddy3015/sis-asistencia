@@ -37,12 +37,16 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 # 🔌 Conexión MySQL
 def conexion_mysql():
+    host = os.environ.get("MYSQLHOST")
+    if not host:
+        raise Exception("MYSQLHOST no definido en variables de entorno")
+    
     return mysql.connector.connect(
-
-        host=os.environ.get("MYSQLHOST"),
+        
+        host=host,
         user=os.environ.get("MYSQLUSER"),
         password=os.environ.get("MYSQLPASSWORD"),
-        database=os.environ.get("MYSQLDATABASE") or os.environ.get("MYSQL_DATABASE"),
+        database=os.environ.get("MYSQLDATABASE"),
         port=int(os.environ.get("MYSQLPORT", 3306))
     )
 
