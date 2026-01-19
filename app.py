@@ -3,7 +3,9 @@ import json
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
-
+import pandas as pd
+import requests
+import io
 import mysql.connector
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -444,8 +446,6 @@ def exportar_excel_por_oc():
         df['horas_extras'] = df['horas_extras'].apply(horas_a_texto)
 
         
-
-        
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Asistencias')
@@ -486,6 +486,64 @@ def exportar_excel_por_oc():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/admin/sync_servicios', methods=['POST'])
+def sync_servicios():
+    try:
+        FILE_ID = os.getenv("SERVICIOS_SHEET_ID")
+        if not FILE_ID:
+            return jsonify({"error": "SERVICIOS_SHEET_ID no definido"}), 500
+
+        url = f"https://docs.google.com/spreadsheets/d/{FILE_ID}/export?format=xlsx"
+
+        print("Descargando Excel desde Google Drive...")
+        response = requests.get(url)
+        response.raise_for_status()
+
+        df = pd.read_excel(io.BytesIO(response.content), engine='openpyxl')
+
+        # Limpieza de cabeceras
+        if 'Unnamed: 0' in df.columns or df.columns[0] is None:
+            df.columns = df.iloc[0]
+            df = df[1:]
+
+        df.columns = [str(c).strip().upper() for c in df.columns]
+        print("Columnas:", df.columns.tolist())
+
+        conn = conexion_mysql()
+        cursor = conn.cursor()
+
+        # Limpiar tabla
+        cursor.execute("TRUNCATE TABLE servicios")
+
+        count = 0
+        for _, row in df.iterrows():
+            oc = str(row.get('OC', '')).strip()
+            cliente = str(row.get('CLIENTE', '')).strip()
+
+            descripcion = row.get('DESCRIPCIÓN')
+            if descripcion is None:
+                descripcion = row.get('DESCRIPCION', '')
+            descripcion = str(descripcion).strip()
+
+            if oc and oc.lower() != 'nan':
+                cursor.execute("""
+                    INSERT INTO servicios (oc, cliente, descripcion)
+                    VALUES (%s, %s, %s)
+                """, (oc, cliente, descripcion))
+                count += 1
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "status": "ok",
+            "registros": count
+        })
+
+    except Exception as e:
+        print("ERROR SYNC:", e)
+        return jsonify({"error": str(e)}), 500
+    
 
 @app.route('/admin/login', methods=['POST'])
 def login_admin():
