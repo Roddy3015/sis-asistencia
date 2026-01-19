@@ -13,9 +13,9 @@ app = Flask(__name__)
 CORS(app)
 
 cloudinary.config(
-    cloud_name="dmfghd8qo",
-    api_key="871221158245828",
-    api_secret="91f8RBSwCd78736i6hzj0gK2LLk",
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
     secure=True
 )
 
