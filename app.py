@@ -27,10 +27,12 @@ if not os.path.exists(UPLOAD_FOLDER):
 # 🔌 Conexión MySQL
 def conexion_mysql():
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="Mega2026",
-        database="sis_asistencia"
+
+        host=os.getenv("MYSQLHOST"),
+        user=os.getenv("MYSQLUSER"),
+        password=os.getenv("MYSQLPASSWORD"),
+        database=os.getenv("MYSQLDATABASE"),
+        port=int(os.getenv("MYSQLPORT"))
     )
 
 def subir_a_cloudinary(file, carpeta):
