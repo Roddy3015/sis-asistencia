@@ -114,31 +114,39 @@ def registrar_grupal():
             limite = datetime.strptime("08:15:00", "%H:%M:%S").time()
             estado = "TEMPRANO" if ahora <= limite else "TARDANZA"
 
-            path_grupo = subir_a_cloudinary(
-                foto_grupo,
-                f"asistencias/entrada/grupo/{id_lider}"
-            )
-            path_doc = subir_a_cloudinary(
-                foto_doc,
-                f"asistencias/entrada/documento/{id_lider}"
-            )
+            try:
+                path_grupo = subir_a_cloudinary(foto_grupo, f"asistencias/entrada/grupo/{id_lider}")
+                path_doc = subir_a_cloudinary( foto_doc, f"asistencias/entrada/documento/{id_lider}")
+            except Exception as e:
+                return jsonify({"status": "error", "message": f"Error al subir imágenes: {e}"}), 500
+            
+            print("INSERTAR ASISTENCIA: ", id_lider, tipo, lat, lon, path_grupo, path_doc, estado, oc_ref, "Integrantes:", integrantes)
 
-            #se modifico aca
-            cursor.execute("""
-                INSERT INTO asistencias
-                (id_lider, tipo_registro, fecha, hora, latitud, longitud,
-                 foto_grupal_path, foto_documento_path, estado_asistencia, oc_referencia)
-                VALUES (%s, 'ENTRADA', CURDATE(), CURTIME(), %s, %s, %s, %s, %s, %s)
-            """, (id_lider, lat, lon, path_grupo, path_doc, estado, oc_ref))
+            try:
 
-            id_asistencia = cursor.lastrowid
-
-            for p in integrantes:
                 cursor.execute("""
-                    INSERT INTO detalle_asistencia
-                    (id_asistencia, nombre_integrante, dni, cargo)
-                    VALUES (%s, %s, %s, %s)
-                """, (id_asistencia, p['nombre'], p['dni'], p['cargo']))
+                    INSERT INTO asistencias
+                    (id_lider, tipo_registro, fecha, hora, latitud, longitud,
+                    foto_grupal_path, foto_documento_path, estado_asistencia, oc_referencia)
+                    VALUES (%s, 'ENTRADA', CURDATE(), CURTIME(), %s, %s, %s, %s, %s, %s)
+                """, (id_lider, lat, lon, path_grupo, path_doc, estado, oc_ref))
+
+            
+                id_asistencia = cursor.lastrowid
+
+                for p in integrantes:
+                    cursor.execute("""
+                        INSERT INTO detalle_asistencia
+                        (id_asistencia, nombre_integrante, dni, cargo)
+                        VALUES (%s, %s, %s, %s)
+                    """, (id_asistencia, p['nombre'], p['dni'], p['cargo']))
+
+            except mysql.connector.Error as e:
+                print("ERROR: MYSQL", e)
+                conn.rollback()
+                conn.close()
+                return jsonify({"status": "error", "message": f"Error en base de datos: {e}"}), 500
+            
 
         else:  # SALIDA
             cursor.execute("""
@@ -217,6 +225,7 @@ def registrar_grupal():
         return jsonify({"status": "ok", "tipo": tipo, "alerta": alerta_msg}), 200
 
     except Exception as e:
+        print("ERROR GENERAL REGISTRAR GRUPAL: ", e)
         return jsonify({"error": str(e)}), 500
     
 import pandas as pd
