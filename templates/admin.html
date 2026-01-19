@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Panel Admin - Asistencias Consolidadas</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         body { font-family: Arial; background: #1a1a1a; color: white; margin:0; padding:0; }
         .admin-container { padding: 20px; color: white; display:none; }
@@ -112,7 +112,7 @@ async function loginAdmin() {
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/admin/login', {
+        const response = await fetch('/admin/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ usuario, password })
@@ -147,7 +147,7 @@ function logoutAdmin() {
 
 // Cargar reportes
 async function cargarReportes() {
-    const response = await fetch('http://127.0.0.1:5000/admin/get_all');
+    const response = await fetch('/admin/get_all');
     const datos = await response.json();
 
     datosGlobales = datos; 
@@ -160,7 +160,7 @@ async function guardarObservacion(id) {
     const observacion = textarea.value;
 
     try {
-        const response = await fetch('http://127.0.0.1:5000/admin/guardar_observacion', {
+        const response = await fetch('/admin/guardar_observacion', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id_asistencia: id, observacion_admin: observacion })
@@ -283,7 +283,7 @@ function filtrarPorOC() {
 function descargarExcel() {
     const oc = document.getElementById('buscarOC').value.trim();
     if (!oc) { alert('Ingrese una OC para descargar'); return; }
-    window.open(`http://127.0.0.1:5000/admin/export_excel?oc=${encodeURIComponent(oc)}`, '_blank');
+    window.open(`/admin/export_excel?oc=${encodeURIComponent(oc)}`, '_blank');
 }
 
 // Verificar sesión al cargar página

@@ -13,7 +13,7 @@ function iniciarSesion() {
         return;
     }
 
-    fetch('http://127.0.0.1:5000/login', {
+    fetch('/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nombre: nombre, password: pass })
@@ -172,7 +172,7 @@ async function enviarTodo(lat, lon) {
 
     status.textContent = `Enviando reporte de ${tipoEvento}...`;
     try {
-        const res = await fetch('http://127.0.0.1:5000/registrar_grupal', {
+        const res = await fetch('/registrar_grupal', {
             method: 'POST',
             body: formData
         });
@@ -202,7 +202,7 @@ document.getElementById('input-oc').addEventListener('input', async function () 
 
        if (q.length < 2) return;
 
-       const res = await fetch(`http://127.0.0.1:5000/servicios/buscar?q=${q}`);
+       const res = await fetch(`/servicios/buscar?q=${q}`);
        const data = await res.json();
 
        data.forEach(s => {
@@ -228,34 +228,7 @@ function confirmarServicio() {
     document.getElementById('paso-1').style.display = 'block';
 }
 
-let ocActual = '';
 
-async function filtrarPorOC() {
-    ocActual = document.getElementById('buscarOC').value.trim();
 
-    if (!ocActual) {
-        alert('Ingrese una OC');
-        return;
-    }
-
-    const response = await fetch(`http://127.0.0.1:5000/admin/get_all`);
-    const datos = await response.json();
-
-    const filtrados = datos.filter(a => a.servicio.oc === ocActual);
-
-    renderTabla(filtrados);
-}
-
-function descargarExcel() {
-    if (!ocActual) {
-        alert('Primero filtre por OC');
-        return;
-    }
-
-    window.open(
-        `http://127.0.0.1:5000/admin/export_excel?oc=${ocActual}`,
-        '_blank'
-    );
-}
 
 
