@@ -32,7 +32,7 @@ def conexion_mysql():
         user=os.getenv("MYSQLUSER"),
         password=os.getenv("MYSQLPASSWORD"),
         database=os.getenv("MYSQLDATABASE"),
-        port=int(os.getenv("MYSQLPORT"))
+        port=int(os.getenv("MYSQLPORT", 3306))
     )
 
 def subir_a_cloudinary(file, carpeta):
