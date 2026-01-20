@@ -43,7 +43,7 @@ def conexion_mysql():
     if not host:
         raise Exception("MYSQLHOST no definido en variables de entorno")
     
-    return mysql.connector.connect(
+    conn = mysql.connector.connect(
         
         host=host,
         user=os.environ.get("MYSQLUSER"),
@@ -51,6 +51,14 @@ def conexion_mysql():
         database=os.environ.get("MYSQLDATABASE"),
         port=int(os.environ.get("MYSQLPORT", 3306))
     )
+    
+    cursor = conn.cursor()
+    cursor.execute("SET time_zone = '-5: 00'")
+    cursor.close()
+
+    return conn
+    
+
 
 def subir_a_cloudinary(file, carpeta):
     resultado = cloudinary.uploader.upload(
