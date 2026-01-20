@@ -1,0 +1,18 @@
+name: Sync Servicios desde Excel
+
+on:
+  schedule:
+    # Todos los días a las 06:00 AM Perú (11:00 UTC)
+    - cron: '0 11 * * *'
+
+  # Permite ejecutarlo manualmente desde GitHub
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Llamar endpoint de sincronización
+        run: |
+          curl -X POST https://sis-asistencia-production.up.railway.app/admin/sync_servicios
