@@ -475,13 +475,19 @@ def exportar_excel_por_oc():
 
         # ---- FORMATEAR HORA Y HORA_SALIDA (SIN "0 days") ----
         def formatear_hora(valor):
-           if pd.isna(valor):
+            if valor is None or valor == '':
                 return ''
-           td = pd.to_timedelta(valor)
-           h = int(td.components.hours)
-           m = int(td.components.minutes)
-           s = int(td.components.seconds)
-           return f"{h:02d}:{m:02d}:{s:02d}"
+
+    
+            if hasattr(valor, 'strftime'):
+                return valor.strftime("%H:%M:%S")
+
+    
+            if isinstance(valor, str):
+                return valor
+
+            return ''
+        
         
         def convertir_hora_peru(valor):
             if pd.isna(valor):
