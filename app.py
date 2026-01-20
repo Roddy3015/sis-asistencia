@@ -53,7 +53,7 @@ def conexion_mysql():
     )
     
     cursor = conn.cursor()
-    cursor.execute("SET time_zone = '-5: 00'")
+    cursor.execute("SET time_zone = '-05:00'")
     cursor.close()
 
     return conn
