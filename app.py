@@ -11,7 +11,9 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask import send_from_directory
 from flask import render_template
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+PERU_TZ = timezone(timedelta(hours=-5))
 
 app = Flask(__name__)
 CORS(app)
@@ -184,7 +186,7 @@ def registrar_grupal():
 
             id_asist_ent = registro[0]
             cursor.execute("""
-                select TIMESTAMPDIFF(MINUTE, CONCAT(fecha, ' ', hora), NOW()) / 60
+                select TIMESTAMPDIFF(MINUTE, CONCAT(fecha, ' ', hora), NOW())
                 FROM asistencias
                 WHERE id_asistencia = %s
             """, (id_asist_ent,))
@@ -261,8 +263,7 @@ def get_all_reports():
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
             SELECT A.fecha, U.nombre_completo, 
-                   CONVERT_TZ (A.hora, '+00:00', '-05:00') AS hora,
-                   CONVERT_TZ (A.hora_salida, '+00:00', '-05:00') AS hora_salida,
+                   A.hora, A.hora_salida,
                    A.estado_asistencia, A.estado_salida,
                    A.foto_grupal_path, A.foto_documento_path,
                    A.foto_grupal_salida_path, A.foto_doc_salida_path,
@@ -293,6 +294,25 @@ def get_all_reports():
 
             integrantes_sal = json.loads(r['integrantes_salida']) if r['integrantes_salida'] else []
 
+            hora_peru = None
+            if r['hora']:
+                hora_peru = (
+
+                    datetime.combine(datetime.today(), r['hora'])
+                    .replace(tzinfo=timezone.utc)
+                    .astimezone(PERU_TZ)
+                    .strftime("%H:%M:%S")
+                )
+            hora_salida_peru = None
+            if r['hora_salida']:
+                hora_salida_peru = (
+                    datetime.combine(datetime.today(), r['hora_salida'])
+                    .replace(tzinfo=timezone.utc)
+                    .astimezone(PERU_TZ)
+                    .strftime("%H:%M:%S")
+                    
+                )
+
             resultados.append({
                 "fecha": str(r['fecha']),
                 "nombre_jefe": r['nombre_completo'],
@@ -303,14 +323,14 @@ def get_all_reports():
                     "descripcion": r['descripcion']
                 },
                 "entrada": {
-                    "hora": str(r['hora']),
+                    "hora": hora_peru,
                     "estado": r['estado_asistencia'],
                     "fotos": [r['foto_grupal_path'], r['foto_documento_path']],
                     "integrantes": integrantes_ent,
                     "ubicacion": {"lat": r['latitud'], "lon": r['longitud']}
                 },
                 "salida": {
-                    "hora": str(r['hora_salida']) if r['hora_salida'] else None,
+                    "hora": hora_salida_peru,
                     "fotos": [r['foto_grupal_salida_path'], r['foto_doc_salida_path']],
                     "alerta": r['observacion_personal'],
                     "integrantes": integrantes_sal
@@ -460,9 +480,30 @@ def exportar_excel_por_oc():
            m = int(td.components.minutes)
            s = int(td.components.seconds)
            return f"{h:02d}:{m:02d}:{s:02d}"
+        
+        def convertir_hora_peru(valor):
+            if pd.isna(valor):
+                return None
 
-        df['hora'] = df['hora'].apply(formatear_hora)
-        df['hora_salida'] = df['hora_salida'].apply(formatear_hora)
+    # valor viene como timedelta o time
+            if isinstance(valor, pd.Timedelta):
+                total_seconds = int(valor.total_seconds())
+                horas = total_seconds // 3600
+                minutos = (total_seconds % 3600) // 60
+                segundos = total_seconds % 60
+                t = datetime(2000, 1, 1, horas, minutos, segundos)
+            else:
+                t = datetime.combine(datetime(2000, 1, 1), valor)
+
+            # UTC -> Perú
+            t_utc = t.replace(tzinfo=timezone.utc)
+            t_peru = t_utc.astimezone(PERU_TZ)
+
+            return t_peru.time()
+
+
+        df['hora'] = df['hora'].apply(convertir_hora_peru).apply(formatear_hora)
+        df['hora_salida'] = df['hora_salida'].apply(convertir_hora_peru).apply(formatear_hora)
 
 
 
