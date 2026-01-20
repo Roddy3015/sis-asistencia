@@ -260,7 +260,9 @@ def get_all_reports():
         conn = conexion_mysql()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT A.fecha, U.nombre_completo, A.hora, A.hora_salida,
+            SELECT A.fecha, U.nombre_completo, 
+                   CONVERT_TZ (A.hora, '+00:00', '-05:00') AS hora,
+                   CONVERT_TZ (A.hora_salida, '+00:00', '-05:00') AS hora_salida,
                    A.estado_asistencia, A.estado_salida,
                    A.foto_grupal_path, A.foto_documento_path,
                    A.foto_grupal_salida_path, A.foto_doc_salida_path,
