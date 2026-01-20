@@ -51,10 +51,7 @@ def conexion_mysql():
         database=os.environ.get("MYSQLDATABASE"),
         port=int(os.environ.get("MYSQLPORT", 3306))
     )
-    
-    cursor = conn.cursor()
-    cursor.execute("SET time_zone = '-05:00'")
-    cursor.close()
+
 
     return conn
     
@@ -157,17 +154,33 @@ def registrar_grupal():
             
 
         else:  # SALIDA
+            
+            oc_ref = request.form.get('oc_referencia')
+            if not oc_ref:
+                return jsonify({
+                    "status": "error",
+                    "message": "Debe seleccionar un OC para la salida"
+                }), 400
+            
             cursor.execute("""
                 SELECT id_asistencia, hora
                 FROM asistencias
-                WHERE id_lider = %s AND fecha = CURDATE() AND tipo_registro = 'ENTRADA'
-                ORDER BY hora DESC
+                WHERE id_lider = %s
+                  AND fecha = CURDATE()
+                  AND tipo_registro = 'ENTRADA'
+                  AND hora_salida IS NULL
+                  AND oc_referencia = %s
+                ORDER BY hora ASC
                 LIMIT 1
-            """, (id_lider,))
+            """, (id_lider, oc_ref))
+
             registro = cursor.fetchone()
 
             if not registro:
-                return jsonify({"status": "error", "message": "No hay entrada registrada hoy"}), 400
+                return jsonify({
+                    "status": "error",
+                    "message": "No hay una entrada abierta para este OC hoy"
+                }), 400
 
             id_asist_ent = registro[0]
             cursor.execute("""
