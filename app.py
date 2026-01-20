@@ -283,6 +283,21 @@ def get_all_reports():
         rows = cursor.fetchall()
         resultados = []
 
+        def convertir_hora_peru(valor):
+            if not valor:
+                return None
+
+            if isinstance(valor, str):
+                valor = datetime.strptime(valor, "%H:%M:%S").time()
+
+            return (
+                datetime.combine(datetime.today(), valor)
+                .replace(tzinfo=timezone.utc)
+                .astimezone(PERU_TZ)
+                .strftime("%H:%M:%S")
+            )
+
+
         for r in rows:
             cursor.execute(
                 "SELECT nombre_integrante, dni, cargo FROM detalle_asistencia WHERE id_asistencia = %s",
@@ -294,24 +309,11 @@ def get_all_reports():
 
             integrantes_sal = json.loads(r['integrantes_salida']) if r['integrantes_salida'] else []
 
-            hora_peru = None
-            if r['hora']:
-                hora_peru = (
+        
+            
+            hora_peru = convertir_hora_peru(r['hora'])
+            hora_salida_peru = convertir_hora_peru(r['hora_salida'])
 
-                    datetime.combine(datetime.today(), r['hora'])
-                    .replace(tzinfo=timezone.utc)
-                    .astimezone(PERU_TZ)
-                    .strftime("%H:%M:%S")
-                )
-            hora_salida_peru = None
-            if r['hora_salida']:
-                hora_salida_peru = (
-                    datetime.combine(datetime.today(), r['hora_salida'])
-                    .replace(tzinfo=timezone.utc)
-                    .astimezone(PERU_TZ)
-                    .strftime("%H:%M:%S")
-                    
-                )
 
             resultados.append({
                 "fecha": str(r['fecha']),
