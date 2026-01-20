@@ -488,30 +488,9 @@ def exportar_excel_por_oc():
 
             return ''
         
-        
-        def convertir_hora_peru(valor):
-            if pd.isna(valor):
-                return None
 
-    # valor viene como timedelta o time
-            if isinstance(valor, pd.Timedelta):
-                total_seconds = int(valor.total_seconds())
-                horas = total_seconds // 3600
-                minutos = (total_seconds % 3600) // 60
-                segundos = total_seconds % 60
-                t = datetime(2000, 1, 1, horas, minutos, segundos)
-            else:
-                t = datetime.combine(datetime(2000, 1, 1), valor)
-
-            # UTC -> Perú
-            t_utc = t.replace(tzinfo=timezone.utc)
-            t_peru = t_utc.astimezone(PERU_TZ)
-
-            return t_peru.time()
-
-
-        df['hora'] = df['hora'].apply(convertir_hora_peru).apply(formatear_hora)
-        df['hora_salida'] = df['hora_salida'].apply(convertir_hora_peru).apply(formatear_hora)
+        df['hora'] = df['hora'].apply(formatear_hora)
+        df['hora_salida'] = df['hora_salida'].apply(formatear_hora)
 
 
 
