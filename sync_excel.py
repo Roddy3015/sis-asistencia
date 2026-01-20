@@ -1,3 +1,5 @@
+#ESTE ARCHIVO SOLO FUNCIONA DE MANERA LOCAL :D
+
 import pandas as pd
 import mysql.connector
 import requests
