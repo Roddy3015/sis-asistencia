@@ -296,8 +296,7 @@ def get_all_reports():
                 .astimezone(PERU_TZ)
                 .strftime("%H:%M:%S")
             )
-
-
+        
         for r in rows:
             cursor.execute(
                 "SELECT nombre_integrante, dni, cargo FROM detalle_asistencia WHERE id_asistencia = %s",
@@ -488,9 +487,29 @@ def exportar_excel_por_oc():
 
             return ''
         
+        def hora_peru_excel(valor):
+            if valor is None or valor == '':
+                return ''
 
-        df['hora'] = df['hora'].apply(formatear_hora)
-        df['hora_salida'] = df['hora_salida'].apply(formatear_hora)
+  
+            if isinstance(valor, str):
+                try:
+                    valor = datetime.strptime(valor, "%H:%M:%S").time()
+                except ValueError:
+                    return valor
+
+            if hasattr(valor, 'hour'):
+        
+               dt_utc = datetime(2000, 1, 1, valor.hour, valor.minute, valor.second, tzinfo=timezone.utc)
+               dt_peru = dt_utc.astimezone(PERU_TZ)
+               return dt_peru.strftime("%H:%M:%S")
+
+            return ''
+
+        
+
+        df['hora'] = df['hora'].apply(hora_peru_excel)
+        df['hora_salida'] = df['hora_salida'].apply(hora_peru_excel)
 
 
 
